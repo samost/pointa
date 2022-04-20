@@ -1,36 +1,37 @@
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using DG.Tweening;
+using Infrustructure;
 using MyPooler;
 using TMPro;
+using Units;
 using Unity.Mathematics;
 using UnityEngine;
+using Zenject;
 
 namespace Point
 {
     public class GamePoint : MonoBehaviour
     {
-        [SerializeField] 
-        private int _startCount = 0;
-        [SerializeField]
-        private int _maxNeturalCount;
-        [SerializeField]
-        private int _maxUnionCount;
-
-        [SerializeField] 
-        private int _multiplierValue;
+        private const int UnitInWaveCount = 5; 
+        
+        public PointState State;
 
         [SerializeField]
         private SpriteRenderer _sprite;
+        [SerializeField] 
+        private int _startCount = 0;
+        [SerializeField]
+        private TextMeshProUGUI _countUILabel = null;
+        [SerializeField] 
+        private Transform[] _spawnPoints = null;
 
-        public PointState State;
-
-        [SerializeField] private TextMeshProUGUI _countUILabel = null;
-        [SerializeField] private Transform[] _spawnPoints = null;
-
-        private int unitsCount;
+        private int _multiplierValue;
+        private int _maxNeturalCount;
+        private int _maxDependentCount;
+        private float _animationDelay;
+        private int _unitsCount;
         private Coroutine _mainRoutine;
+        
 
         private int MaxCount
         {
@@ -39,9 +40,9 @@ namespace Point
                 switch (State)
                 {
                     case PointState.Union:
-                        return _maxUnionCount;
+                        return _maxDependentCount;
                     case PointState.Enemy:
-                        return _maxUnionCount;
+                        return _maxDependentCount;
                     case PointState.Neutral:
                         return _maxNeturalCount;
                 }
@@ -53,7 +54,7 @@ namespace Point
         {
             get
             {
-                return unitsCount;
+                return _unitsCount;
             } 
             private set
             {
@@ -64,12 +65,21 @@ namespace Point
                         value = MaxCount;
                     }
                     
-                    unitsCount = value;
-                    _countUILabel.text = unitsCount.ToString();
+                    _unitsCount = value;
+                    _countUILabel.text = _unitsCount.ToString();
                 }
             } 
         }
 
+        [Inject]
+        private void LoadBalance(GameConfig gameConfig)
+        {
+            _maxNeturalCount = gameConfig.maxNeutralCount;
+            _maxDependentCount = gameConfig.maxDependentCount;
+            _multiplierValue = gameConfig.multiplierValue;
+            _animationDelay = gameConfig.globalAnimationDelay;
+        }
+        
         private void Start()
         {
             UnitsCount = _startCount;
@@ -80,7 +90,7 @@ namespace Point
         {
             while (true)
             {
-                yield return new WaitForSeconds(2f);
+                yield return new WaitForSeconds(_animationDelay);
                 UnitsCount += _multiplierValue;
                 yield return null;
             }
@@ -90,77 +100,77 @@ namespace Point
         {
             StartCoroutine(StartUnits(wavesCount, target));
         }
-
-        public void RemoveDelay(int wavesCount, bool canDie)
-        {
-            StartCoroutine(Remove(wavesCount, canDie));
-        }
-
-        public void AIREmove()
-        {
-            UnitsCount -= 5;
-        }
-
-        private IEnumerator Remove(int wavesCount, bool canDie)
-        {
-            for (int i = 0; i < wavesCount; i++)
-            {
-                yield return new WaitForSeconds(2f);
-                
-                if (State == PointState.Enemy)
-                {
-                   UnitsCount -= 5; 
-                }
-                else if(State == PointState.Neutral || State == PointState.Union)
-                {
-                    UnitsCount += 5;
-                }
-            }
-
-            if (canDie)
-            {
-                ChangeState(PointState.Union);
-            }
-        }
-
+        
         private IEnumerator StartUnits(int wavesCount, Vector3 target)
         {
             for (int i = 0; i < wavesCount; i++)
             {
-                UnitsCount -= 5;
+                UnitsCount -= UnitInWaveCount;
 
-                for (int j = 0; j < 5; j++)
+                for (int j = 0; j < UnitInWaveCount; j++)
                 {
                     var u = ObjectPooler.Instance.GetFromPool("Unit", _spawnPoints[j].position, quaternion.identity);
-                    u.transform.DOMove(target, 2f).OnComplete((() => ObjectPooler.Instance.ReturnToPool("Unit", u)));
+                    u.transform.DOMove(target, _animationDelay).OnComplete((() => ObjectPooler.Instance.ReturnToPool("Unit", u)));
                 }
                 
-                yield return new WaitForSeconds(2f);
+                yield return new WaitForSeconds(_animationDelay);
             }
         }
+        
 
-        public void ChangeState(PointState to)
+        public void ApplyTransaction(Transaction transaction)
         {
-            if (unitsCount == 0)
+            StartCoroutine(TransactionRoutine(transaction));
+        }
+
+        private IEnumerator TransactionRoutine(Transaction transaction)
+        {
+            for (int i = 0; i < transaction.Value; i++)
             {
-                State = PointState.Neutral;
-                _sprite.color = Color.white;
-                return;
+                yield return new WaitForSeconds(_animationDelay);
+
+                ValidateTransaction(transaction);
+            }
+            
+        }
+
+        private void ValidateTransaction(Transaction transaction)
+        {
+            int result = 0;
+
+            if (transaction.CreatorType != State)
+            {
+                result = State == PointState.Neutral ? UnitsCount + UnitInWaveCount : UnitsCount - UnitInWaveCount;
+                
+                if (result < 0 || State == PointState.Neutral)
+                {
+                    SwitchState(transaction.CreatorType);
+                }
             }
             else
             {
-                if (to == PointState.Enemy)
-                {
-                    _sprite.color = Color.red;
-                    State = PointState.Enemy;
-                }
-                else if(to == PointState.Union)
-                {
-                    _sprite.color = Color.green;
-                    State = PointState.Union;
-                }
+                result = UnitsCount + UnitInWaveCount;
             }
-            
+
+            UnitsCount = Mathf.Abs(result);
+        }
+
+        private void SwitchState(PointState to)
+        {
+            State = to;
+
+            if (to == PointState.Enemy)
+            {
+                _sprite.color = Color.red;
+            }
+            else if (to == PointState.Union)
+            {
+                _sprite.color = Color.green;
+            }
+            else if (to == PointState.Neutral)
+            {
+                _sprite.color = Color.white;
+            }
         }
     }
 }

@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Units
 {
-    public class Unit : MonoBehaviour, IPooledObject
+    public class VisualUnit : MonoBehaviour, IPooledObject
     {
         public void OnRequestedFromPool()
         {

@@ -4,6 +4,7 @@ using System.Linq;
 using Point;
 using Transition;
 using UnityEngine;
+using Zenject;
 using Random = UnityEngine.Random;
 
 namespace AI
@@ -12,6 +13,7 @@ namespace AI
     {
         [SerializeField] private GamePoint[] points;
 
+        [Inject] private TransisionManager _transisionManager;
         private void Start()
         {
             StartCoroutine(MainRoutine());
@@ -51,7 +53,7 @@ namespace AI
             }
             
             
-            TransisionManager.Instance.TryMove(enemy, union);
+            _transisionManager.TryMove(enemy, union);
         }
     }
 }

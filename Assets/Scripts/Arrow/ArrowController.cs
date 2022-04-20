@@ -2,6 +2,7 @@ using System;
 using Point;
 using Transition;
 using UnityEngine;
+using Zenject;
 
 namespace Arrow
 {
@@ -12,7 +13,9 @@ namespace Arrow
         private bool _hasInput = false;
         private Vector3 _startPosition = Vector3.zero;
         private GamePoint _startGamePoint = null; 
-        private GamePoint _endGamePoint = null; 
+        private GamePoint _endGamePoint = null;
+
+        [Inject] private TransisionManager _transisionManager;
 
         private void Update()
         {
@@ -44,7 +47,7 @@ namespace Arrow
                 
                 if (_endGamePoint != null && _startGamePoint != null && _startGamePoint.State == PointState.Union)
                 {
-                    TransisionManager.Instance.TryMove(_startGamePoint, _endGamePoint);
+                    _transisionManager.TryMove(_startGamePoint, _endGamePoint);
                     _startGamePoint = null;
                     _endGamePoint = null;
                 }

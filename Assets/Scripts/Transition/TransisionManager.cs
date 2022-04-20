@@ -1,59 +1,31 @@
 using Point;
+using Units;
 using UnityEngine;
 
 namespace Transition
 {
-    public class TransisionManager : MonoBehaviour
+    public class TransisionManager
     {
-        public static TransisionManager Instance = null;
-
-        void Start()
+        public bool TryMove(GamePoint from, GamePoint to)
         {
-            Init();
-        }
+            int count = from.UnitsCount;
 
-        public void TryMove(GamePoint from, GamePoint to)
-        {
-            if (to.State == PointState.Enemy)
+            if (count >= 5)
             {
-                int count = from.UnitsCount;
+                int countWaves = to.State == PointState.Neutral ? 1 : count / 5;
 
-                if (count >=5)
-                {
-                    int countWaves = count / 5;
-                    bool canConquer = countWaves * 5 > to.UnitsCount;
-                    
-                    from.StartUnitsMove(countWaves, to.gameObject.transform.position);
-                    to.RemoveDelay(countWaves, canConquer);
-                }
+                
+                from.StartUnitsMove(countWaves, to.gameObject.transform.position);
+                Transaction transaction = new Transaction(from.State, countWaves);
+                
+                to.ApplyTransaction(transaction);
+                return true;
             }
-
-            if (to.State == PointState.Neutral)
+            else
             {
-                from.StartUnitsMove(1, to.gameObject.transform.position);
-                to.RemoveDelay(1, false);
-                to.ChangeState(PointState.Union);
+                return false;
             }
-
-            if (to.State == PointState.Union)
-            {
-                from.StartUnitsMove(1, to.gameObject.transform.position);
-                to.AIREmove();
-            }
-        }
-
-        private void Init()
-        {
-            if (Instance == null)
-            {
-                Instance = this;
-            }
-            else if (Instance == this)
-            {
-                Destroy(gameObject);
-            }
-
-            DontDestroyOnLoad(gameObject);
+            
         }
     }
 }
