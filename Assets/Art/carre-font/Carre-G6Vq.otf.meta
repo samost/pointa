@@ -1,0 +1,22 @@
+fileFormatVersion: 2
+guid: 38b861011516042c583d5c6926f6782a
+TrueTypeFontImporter:
+  externalObjects: {}
+  serializedVersion: 4
+  fontSize: 16
+  forceTextureCase: -2
+  characterSpacing: 0
+  characterPadding: 1
+  includeFontData: 1
+  fontNames:
+  - Carre
+  fallbackFontReferences:
+  - {fileID: 12800000, guid: 71b92af176e56440d963e2048af92a70, type: 3}
+  customCharacters: 
+  fontRenderingMode: 0
+  ascentCalculationMode: 1
+  useLegacyBoundsCalculation: 0
+  shouldRoundAdvanceValue: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
